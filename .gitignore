@@ -210,3 +210,5 @@ build
 /*.gcno
 
 # End of https://www.gitignore.io/api/macos,swift,python,virtualenv,xcode
+
+websvc/build
