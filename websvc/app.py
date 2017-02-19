@@ -47,7 +47,7 @@ def view_event(link):
 
     # otherwise return 400 BAD REQUEST
     # or a more appropriate message
-
+    pass
 
 @app.route('/event', methods=['POST'])
 def create_event():
@@ -62,4 +62,4 @@ def create_event():
     # try creating object
     # catch ValueError
     #   return 400 BAD REQUEST
-
+    pass
