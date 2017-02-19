@@ -13,3 +13,6 @@ pip install --upgrade pip==${PIP_VERSION}
 pip install -r ../../requirements.txt --no-cache-dir
 
 cd ../../
+
+python -m compileall *.py
+
