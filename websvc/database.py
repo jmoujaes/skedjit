@@ -14,16 +14,20 @@ from sqlalchemy.ext.declarative import declarative_base
 #
 # TODO lock this down when releasing to production, and adjust users/passwords
 # as necessary
-engine = create_engine('postgresql://postgres:temporary@localhost:5432/skedjit', client_encoding='utf8')
-db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 Base = declarative_base()
-Base.query = db_session.query_property()
 
-def init_db():
-    # import all modules here that might define models so that
-    # they will be registered properly on the metadata. Otherwise
-    # you will have to import them first bifore calling init__db()
-    import models
-    Base.metadata.create_all(bind=engine)
+class Database():
+    def __init__(self, connection_url, db_encoding):
+        self.engine = create_engine(connection_url, encoding=db_encoding)
+#        'postgresql://postgres:temporary@localhost:5432/skedjit', client_encoding='utf8'
+        self.db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=self.engine))
+
+        # import all modules here that might define models so that
+        # they will be registered properly on the metadata. Otherwise
+        # you will have to import them first bifore calling init__db()
+        Base.query = self.db_session.query_property()
+        import models
+        Base.metadata.create_all(bind=self.engine)
+
  

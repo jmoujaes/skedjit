@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from sqlalchemy import Column, Integer, String, DateTime
+#from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, TIMESTAMP
 from database import Base
 
 class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True)
     name = Column(String(64))
-    datetime = Column(DateTime())
+    datetime = Column(TIMESTAMP(timezone=True))
     description = Column(String())
     link = Column(String(64), unique=True)
     access = Column(String(256))

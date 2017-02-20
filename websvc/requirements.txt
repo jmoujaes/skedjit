@@ -8,7 +8,9 @@ Jinja2==2.9.5
 lazy-object-proxy==1.2.2
 MarkupSafe==0.23
 mccabe==0.6.1
+mock==2.0.0
 packaging==16.8
+pbr==1.10.0
 psycopg2==2.6.2
 pylint==1.6.5
 pyparsing==2.1.10
