@@ -1,6 +1,48 @@
 <!DOCTYPE html>
+<script>
+function replaceContentInContainer(target, source) {
+      document.getElementById(target).innerHTML = document.getElementById(source).innerHTML;
+   }
 
-<!—- The “placeholder” text and the default datetime needs to be replaced with info from the database that is acquired using a unique id (6 char hash). Edit button on page should change the text to a text box. "Edit Event" button will authenticate and push the updates. —->
+//FOR DATE-TIME
+for(var i=1; i<=12; i++){
+    var select = document.getElementById("month");
+    var option = document.createElement("OPTION");
+	select.options.add(option);
+	option.text = i;
+	option.value = i;
+}//month
+for(var i=1; i<=31; i++){
+    var select = document.getElementById("day");
+    var option = document.createElement("OPTION");
+	select.options.add(option);
+	option.text = i;
+	option.value = i;
+}//day
+for(var i=2000; i<=2030; i++){
+    var select = document.getElementById("year");
+    var option = document.createElement("OPTION");
+	select.options.add(option);
+	option.text = i;
+	option.value = i;
+}//year
+for(var i=1; i<=12; i++){
+    var select = document.getElementById("hours");
+    var option = document.createElement("OPTION");
+	select.options.add(option);
+	option.text = i;
+	option.value = i;
+}//hours
+for(var i=0; i<=60; i++){
+    var select = document.getElementById("hours");
+    var option = document.createElement("OPTION");
+	select.options.add(option);
+	option.text = i;
+	option.value = i;
+}//minutes
+</script>
+
+<!—- The "placeholder" text and the default datetime needs to be replaced with info from the database that is acquired using a unique id (6 char hash). Edit button on page should change the text to a text box. "Edit Event" button will authenticate and push the updates. —->
 
 <html>
 <head>
@@ -8,18 +50,36 @@
 </head>
 <body>
 
+<button onClick="replaceContentInContainer('views', 'edits')">Edit</button>
+
+<div id="views">
 <h4>Event Name:</h4> Placeholder
 <h4>Date and Time:</h4> Placeholder
 <h4>Description:</h4> Description
+</div>
 
+<div id="edits" style="display:none">
+<form method="POST" action="/event_update">
+  Event Name:<br>
+  <input type="text" name="eventname" value="placeholder" required><br>
+  Date and Time:<br>
+  <input type="date" name="datetime" value="1970-01-01T00:00:00" required><br>
+  Description:<br>
+  <input type="text" name="description" value="placeholder"><br>
 
+  <select id="month" name="month"></select>
+  <select id="day" name="day"></select>
+  <select id="year" name="year"></select>
+  <select id="hours" name="hours"></select>
+  <select id="minutes" name="minutes"></select>
+
+  Access Key:<br>
+  <input type="password" name="accesskey" required><br><br>
+  <input type="reset" value="Reset"> <input type="submit" value="Update">
+</form>
+</div>
 
 <p>If you are the owner of this event and need to change the details, please enter the access key below.</p><br>
-
-<form method="POST" action="/authentication">
-  Access Key: <input type="password" name="accesskey" required><br><br>
-  <input type="submit" value="Edit Event">
-</form>
 
 </body>
 </html>
