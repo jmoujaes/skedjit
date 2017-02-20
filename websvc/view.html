@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+
+<!—- The “placeholder” text and the default datetime needs to be replaced with info from the database that is acquired using a unique id (6 char hash). Edit button on page should change the text to a text box. "Edit Event" button will authenticate and push the updates. —->
+
+<html>
+<head>
+<h3 style="text-align:center">Event Viewer</h3>
+</head>
+<body>
+
+<h4>Event Name:</h4> Placeholder
+<h4>Date and Time:</h4> Placeholder
+<h4>Description:</h4> Description
+
+
+
+<p>If you are the owner of this event and need to change the details, please enter the access key below.</p><br>
+
+<form method="POST" action="/authentication">
+  Access Key: <input type="password" name="accesskey" required><br><br>
+  <input type="submit" value="Edit Event">
+</form>
+
+</body>
+</html>
