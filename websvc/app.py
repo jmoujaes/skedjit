@@ -2,7 +2,7 @@ import datetime
 import logging
 import werkzeug
 
-from flask import Flask, redirect, request, abort, \
+from flask import Flask, jsonify, redirect, request, abort, \
                     render_template, escape, url_for
 from sqlalchemy import exc
 from database import Database
@@ -40,6 +40,14 @@ def view_event(link):
     # if request is a GET
         # query event table using link
         # and return object in response
+    if request.method=='GET':
+        event = Event.query.filter(Event.link==link).first()
+        if event is None: abort(404)
+        to_ret = {'name': escape(event.name),
+                    'description': escape(event.description),
+                    'datetime': sendback_datetime(event.datetime),
+                    'link': event.link}
+        return render_template("view.html", data=to_ret)
 
     # if request is a PUT
         # query event table using link
@@ -47,6 +55,12 @@ def view_event(link):
         # update object with form data
         # escape all data before storing/returning it
         # return updated object in response
+    if request.method=='PUT':
+        event = Event.query.filter(Event.link==link).first()
+        given_access = request.form.get('access')
+        if event is None: abort(404)
+        if given_access is None: abort(400)
+
 
     # if request is a DELETE
         # query event table using link
@@ -143,3 +157,37 @@ def create_datetime(year, month, day, hour, minute, ampm, timezone):
     timezone_obj = datetime.timezone(utc_offset)
     datetime_obj = datetime.datetime(year, month, day, hour, minute, tzinfo=timezone_obj)
     return datetime_obj
+
+
+def sendback_datetime(sqlalchemy_timestamp):
+    """
+    Return a dictionary of the parts of a sqlalchemy timestamp object.
+    This includes year, month, day, hour, minute, AM/PM,
+    and timezone.
+    :return: None if any parameters are missing or invalid
+    :return: dictionary of timestamp object parts if successful
+    """
+    year = sqlalchemy_timestamp.year
+    month = sqlalchemy_timestamp.month
+    day = sqlalchemy_timestamp.day
+    hour = sqlalchemy_timestamp.hour
+    minute = sqlalchemy_timestamp.minute
+    if hour < 12:
+        ampm = "AM"
+    else:
+        ampm = "PM"
+
+    # hacky way of getting the timezone offset
+    # but I had to make some progress. Basically
+    # get the string representation of the timestamp
+    # and take the last 6 characters
+    utc_offset = str(sqlalchemy_timestamp)[-6:]
+
+    to_ret = {'year': year,
+                'month': month,
+                'day': day,
+                'hour': hour,
+                'minute': minute,
+                'ampm': ampm,
+                'timezone': utc_offset}
+    return to_ret
