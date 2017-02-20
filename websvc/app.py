@@ -1,7 +1,8 @@
+import datetime
 import logging
 import werkzeug
 
-from flask import Flask, redirect, request, \
+from flask import Flask, redirect, request, abort, \
                     render_template, escape, url_for
 from sqlalchemy import exc
 from database import Database
@@ -23,12 +24,12 @@ def shutdown_session(exception=None):
 @app.errorhandler(werkzeug.exceptions.NotFound)
 def not_found(description, response):
     """ Show 404 page when a resource is not found. """
-    return render_template("not-found.html"), 404
+    return render_template("not-found.html", 404)
 
 @app.errorhandler(werkzeug.exceptions.InternalServerError)
 def not_found(description, response):
     """ Show 500 page when an error occurs. """
-    return render_template("error.html"), 500
+    return render_template("error.html", 500)
 
 @app.route('/')
 def index():
@@ -65,18 +66,21 @@ def create_event():
     if request.method != 'POST':
         abort(400)
 
+    month = request.form.get('month')
+    day = request.form.get('day')
+    year = request.form.get('year')
+    hour = request.form.get('hour')
+    minute = request.form.get('minute')
+    ampm = request.form.get('ampm')
+    timezone = request.form.get('timezone')
     name = request.form.get('name')
-    datetime = request.form.get('datetime')
     description = request.form.get('description')
     access = request.form.get('access')
 
-    # If we cannot make
-    # a datetime out of the data
-    # POSTed in, then the event
-    # is useless.Verify that.
-    if datetime is None:
-        abort(400)
     # deal with parsing datetime
+    datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
+    if datetime_obj is None:
+        abort(400)
 
     # try, catch exception if link is not unique, then must recreate
     # make sure to log this
@@ -84,7 +88,7 @@ def create_event():
     while retry:
         try:
             # create object
-            event = Event(name=name, datetime=datetime, description=description, access=access)
+            event = Event(name=name, datetime=datetime_obj, description=description, access=access)
             db.db_session.add(event)
             db.db_session.commit()
             retry = False
@@ -97,3 +101,45 @@ def create_event():
     # catch ValueError
     #   return 400 BAD REQUEST
     return redirect(url_for('view_event', link=event.link))
+
+
+
+def create_datetime(year, month, day, hour, minute, ampm, timezone):
+    """
+    Create a datetime object with timezone given the input
+    parameters.
+    :return: None if any parameters are missing or invalid
+    :return: datetime object if successful
+    """
+    if year is None or month is None or day is None \
+        or hour is None or minute is None \
+        or ampm is None or timezone is None:
+        return None
+
+    try:
+        year = int(year)
+        month = int(month)
+        day = int(day)
+        hour = int(hour)
+        minute = int(minute)
+        timezone = int(timezone)
+    except ValueError as error:
+        logger.debug(error)
+        return None
+
+    ampm = ampm.upper()
+    if ampm != 'AM' and ampm != 'PM':
+        logger.debug("ampm was: %s" % ampm)
+        return None
+
+    if ampm == 'PM':
+        hour = 12 + hour
+
+    # -12 <= timezone <= 14
+    if timezone < -12 or timezone > 14:
+        return None
+
+    utc_offset = datetime.timedelta(hours=timezone)
+    timezone_obj = datetime.timezone(utc_offset)
+    datetime_obj = datetime.datetime(year, month, day, hour, minute, tzinfo=timezone_obj)
+    return datetime_obj
