@@ -1,3 +1,4 @@
+import bcrypt
 import datetime
 import logging
 import werkzeug
@@ -61,6 +62,38 @@ def view_event(link):
         if event is None: abort(404)
         if given_access is None: abort(400)
 
+        #TODO revisit hashing and get to the bottom of why we must
+        # do an encoding/decoding dance to get storage and comparison
+        # of the hash to not blow up (see goo.gl/IpOfm4)
+        given_access = given_access.encode('utf-8')
+        hashed_access = event.access.encode('utf-8')
+        if bcrypt.hashpw(given_access, hashed_access) != event.access.encode('utf-8'):
+            abort(403)
+
+        newmonth = request.form.get('month')
+        newday = request.form.get('day')
+        newyear = request.form.get('year')
+        newhour = request.form.get('hour')
+        newminute = request.form.get('minute')
+        newampm = request.form.get('ampm')
+        newtimezone = request.form.get('timezone')
+        newname = request.form.get('name')
+        newdescription = request.form.get('description')
+        newdatetime_obj = create_datetime(newyear, newmonth, newday, newhour, newminute, newampm, newtimezone)
+        if newdatetime_obj is None:
+            abort(400)
+
+        # update the event
+        # dont have to set the access code or
+        # or worry about link generation because the
+        # object already exists in the database
+        event.name = newname
+        event.datetime=newdatetime_obj
+        event.description=newdescription
+        db.db_session.add(event)
+        db.db_session.commit()
+
+        return redirect(url_for('view_event', link=event.link))
 
     # if request is a DELETE
         # query event table using link
@@ -95,6 +128,15 @@ def create_event():
     datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
     if datetime_obj is None:
         abort(400)
+
+    # hash the access code given
+    if access is None: abort(400)
+
+    #TODO revisit hashing and get to the bottom of why we must
+    # do an encoding/decoding dance to get storage and comparison
+    # of the hash to not blow up (see goo.gl/IpOfm4) 
+    access = access.encode('utf-8')
+    access = bcrypt.hashpw(access, bcrypt.gensalt()).decode('utf-8')
 
     # try, catch exception if link is not unique, then must recreate
     # make sure to log this
