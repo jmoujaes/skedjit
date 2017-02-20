@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import app
 from database import Database, Base
 import datetime
@@ -138,4 +140,58 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(event_obj.name,'utf-8'), response.get_data())
         self.assertIn(bytes(event_obj.description,'utf-8'), response.get_data())
+
+
+    def test_update_event(self):
+        """
+        Assert that we can successfuly update an event
+        when we provide the correct access code.
+        """
+        # create event and follow redirect to view page
+        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
+
+        # get the item we just created from the database
+        # so we can get its link
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # update the event
+        data = self.proper_post_data
+        data['name'] = "Updated Event Name"
+        data['description'] = "New description for this event."
+        # note that we dont change the access code so it should
+        # match what's in the database and allow us to update
+        response = self.client.put('/event/%s' % event_obj.link, data=data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(data['name'], 'utf-8'), response.get_data())
+        self.assertIn(bytes(data['description'], 'utf-8'), response.get_data())
+
+    def test_update_event_invalid_access_code(self):
+        """
+        Assert that we can get return a 403 during update
+        if the user provides an incorrect access code.
+        """
+        # create event and follow redirect to view page
+        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
+
+        # get the item we just created from the database
+        # so we can get its link
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # update the event
+        data = self.proper_post_data
+        data['name'] = "Updated Event Name"
+        data['description'] = "New description for this event."
+        data['access'] = "WRONG CODE"
+
+        response = self.client.put('/event/%s' % event_obj.link, data=data, follow_redirects=True)
+        self.assertEqual(response.status_code, 403)
+
 
