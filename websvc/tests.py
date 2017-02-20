@@ -1,7 +1,7 @@
 import app
 from database import Database, Base
 import datetime
-import models
+from models import Event
 import mock
 import unittest
 
@@ -12,6 +12,16 @@ class TestApp(unittest.TestCase):
         Base.metadata.create_all(app.db.engine)
         app.app.config['TESTING'] = True
         self.client = app.app.test_client()
+        self.proper_post_data = {'name':'My Wonderful Event',
+                                'description': 'This event will change the world!',
+                                'access': 'access',
+                                'year': '2017',
+                                'month': '12',
+                                'day': '12',
+                                'hour':'10',
+                                'minute': '00',
+                                'ampm':'am',
+                                'timezone':'-5'}
 
     def tearDown(self):
         Base.metadata.drop_all(app.db.engine)
@@ -24,22 +34,22 @@ class TestApp(unittest.TestCase):
         """
         with self.assertRaises(ValueError):
             # missing name
-            models.Event(name=None, datetime="not None", description="not None", access="not None")
+            Event(name=None, datetime="not None", description="not None", access="not None")
 
         with self.assertRaises(ValueError):
             # missing datetime
-            models.Event(name="not None", datetime=None, description="not None", access="not None")
+            Event(name="not None", datetime=None, description="not None", access="not None")
 
     def test_event_model_initialization_link_generation(self):
         """
         Assert that the Event model creates a link during
         initialization.
         """
-        event = models.Event(name="not None", datetime="not None", description="not None", access="not None")
+        event = Event(name="not None", datetime="not None", description="not None", access="not None")
 
         self.assertIsNotNone(event.link)
 
-    @mock.patch('models.Event.create_link')
+    @mock.patch('tests.Event.create_link')
     def test_create_event_link_collision(self, mock_createlink):
         """
         Assert that we recreate links for an event
@@ -75,16 +85,9 @@ class TestApp(unittest.TestCase):
         if the date and time info POSTed in is
         missing.
         """
-        data={'name':'name', 'description': 'desc',
-                'access': 'access',
-                'year': None,
-                'month': '12',
-                'day': '12',
-                'hour':'10',
-                'minute': '00',
-                'ampm':'am',
-                'timezone':'EST'}
+        data=self.proper_post_data
 
+        data['year'] = None
         result = self.client.post('/event', data=data)
         self.assertEqual(result.status_code, 400)
 
@@ -112,4 +115,27 @@ class TestApp(unittest.TestCase):
         result = self.client.post('/event', data=data)
         self.assertEqual(result.status_code, 400)
 
+
+    def test_get_event_returns_event_object(self):
+        """
+        Assert that a GET request to /event/<link>
+        returns the Event object with that link id
+        """
+        # create an event object and save it to the
+        # database
+        create = self.client.post('/event', data=self.proper_post_data)
+        self.assertEqual(create.status_code, 302)
+
+        # get the item we just created from the database
+        # so we can get its link
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # send a GET request with the link, and assert that the
+        # html template rendered has the object we created
+        response = self.client.get('/event/%s' % event_obj.link)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(event_obj.name,'utf-8'), response.get_data())
+        self.assertIn(bytes(event_obj.description,'utf-8'), response.get_data())
 
