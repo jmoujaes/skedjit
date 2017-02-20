@@ -1,3 +1,4 @@
+import bcrypt
 import datetime
 import logging
 import werkzeug
@@ -95,6 +96,10 @@ def create_event():
     datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
     if datetime_obj is None:
         abort(400)
+
+    # hash the access code given
+    if access is None: abort(400)
+    access = bcrypt.hashpw(bytes(access,'utf-8'), bcrypt.gensalt())
 
     # try, catch exception if link is not unique, then must recreate
     # make sure to log this
