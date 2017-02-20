@@ -58,9 +58,58 @@ class TestApp(unittest.TestCase):
         result = self.client.post('/event', data={
                                     'name': 'name',
                                     'description': 'desc',
-                                    'datetime': datetime.datetime.now(),
+                                    'year': '2017',
+                                    'month': '12',
+                                    'day': '12',
+                                    'hour': '10',
+                                    'minute': '00',
+                                    'ampm':'am',
+                                    'timezone': '-5',
                                     'access': 'access'})
         # and assert that it sends redirect
         self.assertEqual(result.status_code, 302)
+
+    def test_create_event_missing_date_info(self):
+        """
+        Assert that we send back a 400 BAD REQUEST
+        if the date and time info POSTed in is
+        missing.
+        """
+        data={'name':'name', 'description': 'desc',
+                'access': 'access',
+                'year': None,
+                'month': '12',
+                'day': '12',
+                'hour':'10',
+                'minute': '00',
+                'ampm':'am',
+                'timezone':'EST'}
+
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['year'] = '2017'; data['month'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['month'] = '12'; data['day'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['day'] = '12'; data['hour'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['hour'] = '10'; data['minute'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['minute'] = '00'; data['ampm'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
+
+        data['ampm'] = 'am'; data['timezone'] = None
+        result = self.client.post('/event', data=data)
+        self.assertEqual(result.status_code, 400)
 
 
