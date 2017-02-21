@@ -195,3 +195,43 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
 
+    def test_delete_event(self):
+        """
+        Assert that an event is removed from the database
+        when the access code provided is correct.
+        """
+        # create event and follow redirect to view page
+        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
+
+        # get the item we just created from the database
+        # so we can get its link
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # send a delete request
+        response = self.client.delete('/event/%s' % event_obj.link, data={'access':self.proper_post_data['access']}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+
+    def test_delete_event_invalid_access_code(self):
+        """
+        Assert that we return 403 to requests that
+        provide an incorrect access code.
+        """
+        # create event and follow redirect to view page
+        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
+
+        # get the item we just created from the database
+        # so we can get its link
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # send a delete request
+        response = self.client.delete('/event/%s' % event_obj.link, data={'access':'WRONG ACCESS CODE'}, follow_redirects=True)
+        self.assertEqual(response.status_code, 403)
+

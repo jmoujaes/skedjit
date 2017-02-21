@@ -62,12 +62,7 @@ def view_event(link):
         if event is None: abort(404)
         if given_access is None: abort(400)
 
-        #TODO revisit hashing and get to the bottom of why we must
-        # do an encoding/decoding dance to get storage and comparison
-        # of the hash to not blow up (see goo.gl/IpOfm4)
-        given_access = given_access.encode('utf-8')
-        hashed_access = event.access.encode('utf-8')
-        if bcrypt.hashpw(given_access, hashed_access) != event.access.encode('utf-8'):
+        if check_access(event, given_access) is False:
             abort(403)
 
         newmonth = request.form.get('month')
@@ -100,10 +95,22 @@ def view_event(link):
         # verify access code
         # delete record from database
         # return status in response
+    if request.method=='DELETE':
+        event = Event.query.filter(Event.link==link).first()
+        given_access = request.form.get('access')
+        if event is None: abort(404)
+        if given_access is None: abort(400)
+
+        if check_access(event, given_access) is True:
+            Event.query.filter(Event.link==link).delete()
+            db.db_session.commit()
+            return "Success", 200
+
+        else: abort(403)
 
     # otherwise return 400 BAD REQUEST
     # or a more appropriate message
-    return 'Success', 200
+    return 400
 
 @app.route('/event', methods=['POST'])
 def create_event():
@@ -130,11 +137,10 @@ def create_event():
         abort(400)
 
     # hash the access code given
-    if access is None: abort(400)
-
     #TODO revisit hashing and get to the bottom of why we must
     # do an encoding/decoding dance to get storage and comparison
     # of the hash to not blow up (see goo.gl/IpOfm4) 
+    if access is None: abort(400)
     access = access.encode('utf-8')
     access = bcrypt.hashpw(access, bcrypt.gensalt()).decode('utf-8')
 
@@ -233,3 +239,23 @@ def sendback_datetime(sqlalchemy_timestamp):
                 'ampm': ampm,
                 'timezone': utc_offset}
     return to_ret
+
+
+def check_access(event_object, given_access_code):
+    """
+    Return True if the given access code matches
+    that of the event.
+    Return False otherwise.
+    """
+    #TODO revisit hashing and get to the bottom of why we must
+    # do an encoding/decoding dance to get storage and comparison
+    # of the hash to not blow up (see goo.gl/IpOfm4)
+    if isinstance(given_access_code, str):
+        given_access_code = given_access_code.encode('utf-8')
+    if isinstance(event_object.access, str):
+        event_object.access = event_object.access.encode('utf-8')
+
+    if bcrypt.hashpw(given_access_code, event_object.access) == event_object.access:
+        return True
+    else:
+        return False
