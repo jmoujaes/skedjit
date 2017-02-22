@@ -62,11 +62,11 @@ for(var i=0; i<=60; i++){
 <div id="edits" style="display:none">
 <form method="POST" action="/event_update">
   Event Name:<br>
-  <input type="text" name="eventname" value="placeholder" required><br>
+  <input type="text" name="eventname" value="{{data.name}}" required><br>
   Date and Time:<br>
   <input type="date" name="datetime" value="1970-01-01T00:00:00" required><br>
   Description:<br>
-  <input type="text" name="description" value="placeholder"><br>
+  <input type="text" name="description" value="{{data.description}}"><br>
 
   <select id="month" name="month"></select>
   <select id="day" name="day"></select>

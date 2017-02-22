@@ -112,58 +112,60 @@ def view_event(link):
     # or a more appropriate message
     return 400
 
-@app.route('/event', methods=['POST'])
+
+@app.route('/create', methods=['GET', 'POST'])
 def create_event():
-    # extract form data
-    # all can be blank except for
-    # datetime.
-    if request.method != 'POST':
-        abort(400)
+    if request.method == 'GET':
+        return render_template("create.html")
 
-    month = request.form.get('month')
-    day = request.form.get('day')
-    year = request.form.get('year')
-    hour = request.form.get('hour')
-    minute = request.form.get('minute')
-    ampm = request.form.get('ampm')
-    timezone = request.form.get('timezone')
-    name = request.form.get('name')
-    description = request.form.get('description')
-    access = request.form.get('access')
+    elif request.method == 'POST':
+        # extract form data
+        # all can be blank except for
+        # datetime.
+        month = request.form.get('month')
+        day = request.form.get('day')
+        year = request.form.get('year')
+        hour = request.form.get('hour')
+        minute = request.form.get('minute')
+        ampm = request.form.get('ampm')
+        timezone = request.form.get('timezone')
+        name = request.form.get('name')
+        description = request.form.get('description')
+        access = request.form.get('access')
 
-    # deal with parsing datetime
-    datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
-    if datetime_obj is None:
-        abort(400)
+        # deal with parsing datetime
+        datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
+        if datetime_obj is None:
+            abort(400)
 
-    # hash the access code given
-    #TODO revisit hashing and get to the bottom of why we must
-    # do an encoding/decoding dance to get storage and comparison
-    # of the hash to not blow up (see goo.gl/IpOfm4) 
-    if access is None: abort(400)
-    access = access.encode('utf-8')
-    access = bcrypt.hashpw(access, bcrypt.gensalt()).decode('utf-8')
+        # hash the access code given
+        #TODO revisit hashing and get to the bottom of why we must
+        # do an encoding/decoding dance to get storage and comparison
+        # of the hash to not blow up (see goo.gl/IpOfm4) 
+        if access is None: abort(400)
+        access = access.encode('utf-8')
+        access = bcrypt.hashpw(access, bcrypt.gensalt()).decode('utf-8')
 
-    # try, catch exception if link is not unique, then must recreate
-    # make sure to log this
-    retry = True
-    while retry:
-        try:
-            # create object
-            event = Event(name=name, datetime=datetime_obj, description=description, access=access)
-            db.db_session.add(event)
-            db.db_session.commit()
-            retry = False
-        except exc.IntegrityError as error:
-            if 'duplicate key' in str(error) \
-                and 'events_link_key' in str(error):
-                logger.warning("Collision in link hash %s" % event.link)
-                db.db_session.rollback()
+        # try, catch exception if link is not unique, then must recreate
+        # make sure to log this
+        retry = True
+        while retry:
+            try:
+                # create object
+                event = Event(name=name, datetime=datetime_obj, description=description, access=access)
+                db.db_session.add(event)
+                db.db_session.commit()
+                retry = False
+            except exc.IntegrityError as error:
+                if 'duplicate key' in str(error) \
+                    and 'events_link_key' in str(error):
+                    logger.warning("Collision in link hash %s" % event.link)
+                    db.db_session.rollback()
 
-    # catch ValueError
-    #   return 400 BAD REQUEST
-    return redirect(url_for('view_event', link=event.link))
+        return redirect(url_for('view_event', link=event.link))
 
+    # request.method is neither GET nor POST
+    else: abort(400)
 
 
 def create_datetime(year, month, day, hour, minute, ampm, timezone):

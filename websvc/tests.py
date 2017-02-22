@@ -67,7 +67,7 @@ class TestApp(unittest.TestCase):
             'abcd', 'dcba']
 
         # send create request
-        result = self.client.post('/event', data={
+        result = self.client.post('/create', data={
                                     'name': 'name',
                                     'description': 'desc',
                                     'year': '2017',
@@ -90,31 +90,31 @@ class TestApp(unittest.TestCase):
         data=self.proper_post_data
 
         data['year'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['year'] = '2017'; data['month'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['month'] = '12'; data['day'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['day'] = '12'; data['hour'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['hour'] = '10'; data['minute'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['minute'] = '00'; data['ampm'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
         data['ampm'] = 'am'; data['timezone'] = None
-        result = self.client.post('/event', data=data)
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
 
@@ -125,7 +125,7 @@ class TestApp(unittest.TestCase):
         """
         # create an event object and save it to the
         # database
-        create = self.client.post('/event', data=self.proper_post_data)
+        create = self.client.post('/create', data=self.proper_post_data)
         self.assertEqual(create.status_code, 302)
 
         # get the item we just created from the database
@@ -148,7 +148,7 @@ class TestApp(unittest.TestCase):
         when we provide the correct access code.
         """
         # create event and follow redirect to view page
-        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        response = self.client.post('/create', data=self.proper_post_data, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
@@ -175,7 +175,7 @@ class TestApp(unittest.TestCase):
         if the user provides an incorrect access code.
         """
         # create event and follow redirect to view page
-        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        response = self.client.post('/create', data=self.proper_post_data, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
@@ -201,7 +201,7 @@ class TestApp(unittest.TestCase):
         when the access code provided is correct.
         """
         # create event and follow redirect to view page
-        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        response = self.client.post('/create', data=self.proper_post_data, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
@@ -221,7 +221,7 @@ class TestApp(unittest.TestCase):
         provide an incorrect access code.
         """
         # create event and follow redirect to view page
-        response = self.client.post('/event', data=self.proper_post_data, follow_redirects=True)
+        response = self.client.post('/create', data=self.proper_post_data, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
