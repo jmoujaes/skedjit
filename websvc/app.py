@@ -7,12 +7,17 @@ from flask import Flask, jsonify, redirect, request, abort, \
                     render_template, escape, url_for
 from sqlalchemy import exc
 from database import Database
-#from database import db_session, init_db
 from models import Event
 
-logger = logging.getLogger(__name__)
-
+# create instance of app
 app = Flask(__name__)
+
+# set up logging
+fh = logging.FileHandler("webapp.log")
+fh.setFormatter(logging.Formatter(
+    '%(asctime)s %(filename)s:%(lineno)d %(levelname)s: %(message)s'))
+fh.setLevel(logging.DEBUG)
+app.logger.addHandler(fh)
 
 # create the database with the models specified
 db = Database('postgresql://postgres:temporary@localhost:5432/skedjit', 'utf8')
@@ -23,18 +28,18 @@ def shutdown_session(exception=None):
     db.db_session.remove()
 
 @app.errorhandler(werkzeug.exceptions.NotFound)
-def not_found(description, response):
+def not_found(response):
     """ Show 404 page when a resource is not found. """
-    return render_template("not-found.html", 404)
+    return render_template("not-found.html")
 
 @app.errorhandler(werkzeug.exceptions.InternalServerError)
-def not_found(description, response):
+def error(response):
     """ Show 500 page when an error occurs. """
-    return render_template("error.html", 500)
+    return render_template("error.html")
 
 @app.route('/')
 def index():
-    return 'Home Page'
+    render_template("index.html")
 
 @app.route('/event/<link>', methods=['GET', 'PUT', 'DELETE'])
 def view_event(link):
@@ -42,8 +47,12 @@ def view_event(link):
         # query event table using link
         # and return object in response
     if request.method=='GET':
+        app.logger.info("Retrieving event %s" % link)
         event = Event.query.filter(Event.link==link).first()
-        if event is None: abort(404)
+        if event is None: 
+            app.logger.debug("event not found")
+            abort(404)
+
         to_ret = {'name': escape(event.name),
                     'description': escape(event.description),
                     'datetime': sendback_datetime(event.datetime),
@@ -57,10 +66,15 @@ def view_event(link):
         # escape all data before storing/returning it
         # return updated object in response
     if request.method=='PUT':
+        app.logger.info("Updating event %s" % link)
         event = Event.query.filter(Event.link==link).first()
         given_access = request.form.get('access')
-        if event is None: abort(404)
-        if given_access is None: abort(400)
+        if event is None: 
+            app.logger.debug("event not found.")
+            abort(404)
+        if given_access is None:
+            app.logger.debug("user did not supply access code.")
+            abort(400)
 
         if check_access(event, given_access) is False:
             abort(403)
@@ -76,6 +90,7 @@ def view_event(link):
         newdescription = request.form.get('description')
         newdatetime_obj = create_datetime(newyear, newmonth, newday, newhour, newminute, newampm, newtimezone)
         if newdatetime_obj is None:
+            app.logger.debug("newdatetime_obj is None")
             abort(400)
 
         # update the event
@@ -96,10 +111,15 @@ def view_event(link):
         # delete record from database
         # return status in response
     if request.method=='DELETE':
+        app.logger.info("Deleting event %s" % link)
         event = Event.query.filter(Event.link==link).first()
         given_access = request.form.get('access')
-        if event is None: abort(404)
-        if given_access is None: abort(400)
+        if event is None:
+            app.logger.debug("event not found.")
+            abort(404)
+        if given_access is None:
+            app.logger.debug("user did not supply access code.")
+            abort(400)
 
         if check_access(event, given_access) is True:
             Event.query.filter(Event.link==link).delete()
@@ -119,6 +139,7 @@ def create_event():
         return render_template("create.html")
 
     elif request.method == 'POST':
+        app.logger.info("Creating event.")
         # extract form data
         # all can be blank except for
         # datetime.
@@ -132,17 +153,22 @@ def create_event():
         name = request.form.get('name')
         description = request.form.get('description')
         access = request.form.get('access')
+        app.logger.debug("name: %s description: %s" % (name, description))
 
         # deal with parsing datetime
         datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
         if datetime_obj is None:
+            app.logger.debug("datetime_obj is None")
             abort(400)
 
         # hash the access code given
         #TODO revisit hashing and get to the bottom of why we must
         # do an encoding/decoding dance to get storage and comparison
         # of the hash to not blow up (see goo.gl/IpOfm4) 
-        if access is None: abort(400)
+        if access is None: 
+            app.logger.debug("access is None")
+            abort(400)
+
         access = access.encode('utf-8')
         access = bcrypt.hashpw(access, bcrypt.gensalt()).decode('utf-8')
 
@@ -159,7 +185,7 @@ def create_event():
             except exc.IntegrityError as error:
                 if 'duplicate key' in str(error) \
                     and 'events_link_key' in str(error):
-                    logger.warning("Collision in link hash %s" % event.link)
+                    app.logger.warning("Collision in link hash %s" % event.link)
                     db.db_session.rollback()
 
         return redirect(url_for('view_event', link=event.link))
@@ -175,6 +201,10 @@ def create_datetime(year, month, day, hour, minute, ampm, timezone):
     :return: None if any parameters are missing or invalid
     :return: datetime object if successful
     """
+    app.logger.debug("year: %s month: %s day: %s " \
+        "hour: %s minute: %s ampm: %s timezone: %s" \
+        % (year, month, day, hour, minute, ampm, timezone))
+
     if year is None or month is None or day is None \
         or hour is None or minute is None \
         or ampm is None or timezone is None:
@@ -188,12 +218,12 @@ def create_datetime(year, month, day, hour, minute, ampm, timezone):
         minute = int(minute)
         timezone = int(timezone)
     except ValueError as error:
-        logger.debug(error)
+        app.logger.error(error)
         return None
 
     ampm = ampm.upper()
     if ampm != 'AM' and ampm != 'PM':
-        logger.debug("ampm was: %s" % ampm)
+        app.logger.debug("ampm was: %s" % ampm)
         return None
 
     if ampm == 'PM':
@@ -201,6 +231,7 @@ def create_datetime(year, month, day, hour, minute, ampm, timezone):
 
     # -12 <= timezone <= 14
     if timezone < -12 or timezone > 14:
+        app.logger.debug("timezone was not within -12 to 14 range")
         return None
 
     utc_offset = datetime.timedelta(hours=timezone)
@@ -252,12 +283,15 @@ def check_access(event_object, given_access_code):
     #TODO revisit hashing and get to the bottom of why we must
     # do an encoding/decoding dance to get storage and comparison
     # of the hash to not blow up (see goo.gl/IpOfm4)
+    app.logger.debug("verifiying access code.")
     if isinstance(given_access_code, str):
         given_access_code = given_access_code.encode('utf-8')
     if isinstance(event_object.access, str):
         event_object.access = event_object.access.encode('utf-8')
 
     if bcrypt.hashpw(given_access_code, event_object.access) == event_object.access:
+        app.logger.debug("access granted")
         return True
     else:
+        app.logger.debug("access denied")
         return False
