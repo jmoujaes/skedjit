@@ -7,17 +7,118 @@
 
 <form method="POST" action="/create">
   Event Name:<br>
-  <input type="text" name="eventname" required><br>
-  Date and Time:<br>
-  <input type="date" name="datetime" required><br>
+  <input type="text" name="name"><br>
+
+  <select id="month" name="month" placeholder="text" required></select>
+  <select id="day" name="day" required></select>
+  <select id="year" name="year" required></select>
+  <select id="hour" name="hour" required></select>
+  <select id="minute" name="minute" required></select>
+  <select id="ampm" name="ampm" required></select>
+  <select id="timezone" name="timezone" required></select>
+  <br>
+
   Description:<br>
   <input type="text" name="description"><br>
   Access Key:<br>
-  <input type="password" name="accesskey" required><br><br>
+  <input type="password" name="access" required><br><br>
   <input type="reset" value="Cancel"> <input type="submit" value="Create">
 </form>
 
 <p>Please fill all of the forms to complete your event.</p>
+
+
+<script>
+//FOR DATE-TIME
+var select = document.getElementById("month");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Month";
+option.value = null;
+for(var i=1; i<=12; i++){
+    var select = document.getElementById("month");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//month
+
+var select = document.getElementById("day");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Day";
+option.value = null;
+for(var i=1; i<=31; i++){
+    var select = document.getElementById("day");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//day
+
+var select = document.getElementById("year");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Year";
+option.value = null;
+for(var i=2000; i<=2030; i++){
+    var select = document.getElementById("year");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//year
+
+var select = document.getElementById("hour");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Hour";
+option.value = null;
+for(var i=1; i<=12; i++){
+    var select = document.getElementById("hour");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//hour
+
+var select = document.getElementById("minute");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Minute";
+option.value = null;
+for(var i=0; i<=60; i++){
+    var select = document.getElementById("minute");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//minute
+
+var select = document.getElementById("timezone");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Timezone";
+option.value = null;
+for(var i=-12; i<=14; i++){
+    var select = document.getElementById("timezone");
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+}//timezone
+
+// AM and PM
+var select = document.getElementById("ampm");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "AM";
+option.value = "AM";
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "PM";
+option.value = "PM";
+</script>
 
 </body>
 </html>
