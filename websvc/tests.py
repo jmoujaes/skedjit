@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import app
-from database import Database, Base
 import datetime
-from models import Event
 import mock
 import unittest
+from database import Database, Base
+from models import Event
+from flask import template_rendered, escape
+from contextlib import contextmanager
 
 class TestApp(unittest.TestCase):
 
@@ -21,11 +23,13 @@ class TestApp(unittest.TestCase):
                                 'month': '12',
                                 'day': '12',
                                 'hour':'10',
-                                'minute': '00',
-                                'ampm':'am',
+                                'minute': '0',
+                                'ampm':'AM',
                                 'timezone':'-5'}
 
     def tearDown(self):
+        # close all connections before dropping all tables
+        app.db.db_session.close_all()
         Base.metadata.drop_all(app.db.engine)
 
 
@@ -36,18 +40,22 @@ class TestApp(unittest.TestCase):
         """
         with self.assertRaises(ValueError):
             # missing name
-            Event(name=None, datetime="not None", description="not None", access="not None")
+            Event(name=None, datetime="not None", tz_offset=0, description="not None", access="not None")
 
         with self.assertRaises(ValueError):
             # missing datetime
-            Event(name="not None", datetime=None, description="not None", access="not None")
+            Event(name="not None", datetime=None, tz_offset=0, description="not None", access="not None")
+
+        with self.assertRaises(ValueError):
+            # missing tz_offset
+            Event(name="not None", datetime="not None", tz_offset=None, description="not None", access="not None")
 
     def test_event_model_initialization_link_generation(self):
         """
         Assert that the Event model creates a link during
         initialization.
         """
-        event = Event(name="not None", datetime="not None", description="not None", access="not None")
+        event = Event(name="not None", datetime="not None", tz_offset=0, description="not None", access="not None")
 
         self.assertIsNotNone(event.link)
 
@@ -109,11 +117,11 @@ class TestApp(unittest.TestCase):
         result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
-        data['minute'] = '00'; data['ampm'] = None
+        data['minute'] = '00'; data['timezone'] = None
         result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
-        data['ampm'] = 'am'; data['timezone'] = None
+        data['timezone'] = '0'; data['ampm'] = None
         result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
@@ -235,3 +243,58 @@ class TestApp(unittest.TestCase):
         response = self.client.delete('/event/%s' % event_obj.link, data={'access':'WRONG ACCESS CODE'}, follow_redirects=True)
         self.assertEqual(response.status_code, 403)
 
+
+    def test_objects_are_same_on_post_and_get(self):
+        """
+        Assert that the name/description/timestamp/
+        timezone combination retrieved on GET is the 
+        same as entered on POST.
+        """
+        # create event and follow redirect to view page
+        response = self.client.post('/create', data=self.proper_post_data, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+
+        # get the item we just created from the database
+        event_obj = Event.query.filter(
+                        Event.name==self.proper_post_data['name'],
+                        Event.description==self.proper_post_data['description']).first()
+
+        # assert the data was stored in the database properly
+        self.assertEqual(event_obj.tz_offset, int(self.proper_post_data['timezone']))
+        self.assertEqual(event_obj.datetime.year, int(self.proper_post_data['year']))
+        self.assertEqual(event_obj.datetime.month, int(self.proper_post_data['month']))
+        self.assertEqual(event_obj.datetime.day, int(self.proper_post_data['day']))
+        self.assertEqual(event_obj.datetime.minute, int(self.proper_post_data['minute']))
+
+        # do a GET on the event and assert that the data
+        # we send the template as context is the same as
+        # what was POSTed in and the same as whats in the db
+        with captured_templates(app.app) as templates:
+            response = self.client.get('/event/%s' % event_obj.link)
+            self.assertEqual(len(templates), 1)
+            template, context = templates[0]
+            data = context['data']
+            self.assertEqual(data['datetime']['timezone'], self.proper_post_data['timezone'])
+            self.assertEqual(data['datetime']['year'], self.proper_post_data['year'])
+            self.assertEqual(data['datetime']['month'], self.proper_post_data['month'])
+            self.assertEqual(data['datetime']['day'], self.proper_post_data['day'])
+            self.assertEqual(data['datetime']['hour'], self.proper_post_data['hour'])
+            self.assertEqual(data['datetime']['minute'], self.proper_post_data['minute'])
+            self.assertEqual(data['datetime']['ampm'], self.proper_post_data['ampm'])
+
+            self.assertEqual(data['name'], escape(self.proper_post_data['name']))
+            self.assertEqual(data['description'], escape(self.proper_post_data['description']))
+
+
+
+# we use this to capture the template objects that are created by the views
+@contextmanager
+def captured_templates(app):
+    recorded = []
+    def record(sender, template, context, **extra):
+        recorded.append((template, context))
+    template_rendered.connect(record, app)
+    try:
+        yield recorded
+    finally:
+        template_rendered.disconnect(record, app)

@@ -55,7 +55,7 @@ def view_event(link):
 
         to_ret = {'name': escape(event.name),
                     'description': escape(event.description),
-                    'datetime': sendback_datetime(event.datetime),
+                    'datetime': sendback_datetime(event.datetime, event.tz_offset),
                     'link': event.link}
         return render_template("view.html", data=to_ret)
 
@@ -85,10 +85,10 @@ def view_event(link):
         newhour = request.form.get('hour')
         newminute = request.form.get('minute')
         newampm = request.form.get('ampm')
-        newtimezone = request.form.get('timezone')
+        newtz_offset = request.form.get('timezone')
         newname = request.form.get('name')
         newdescription = request.form.get('description')
-        newdatetime_obj = create_datetime(newyear, newmonth, newday, newhour, newminute, newampm, newtimezone)
+        newdatetime_obj, newtz_offset = create_datetime(newyear, newmonth, newday, newhour, newminute, newampm, newtz_offset)
         if newdatetime_obj is None:
             app.logger.debug("newdatetime_obj is None")
             abort(400)
@@ -98,8 +98,9 @@ def view_event(link):
         # or worry about link generation because the
         # object already exists in the database
         event.name = newname
-        event.datetime=newdatetime_obj
-        event.description=newdescription
+        event.datetime = newdatetime_obj
+        event.tz_offset = newtz_offset
+        event.description = newdescription
         db.db_session.add(event)
         db.db_session.commit()
 
@@ -149,14 +150,14 @@ def create_event():
         hour = request.form.get('hour')
         minute = request.form.get('minute')
         ampm = request.form.get('ampm')
-        timezone = request.form.get('timezone')
+        tz_offset = request.form.get('timezone')
         name = request.form.get('name')
         description = request.form.get('description')
         access = request.form.get('access')
         app.logger.debug("name: %s description: %s" % (name, description))
 
         # deal with parsing datetime
-        datetime_obj = create_datetime(year, month, day, hour, minute, ampm, timezone)
+        datetime_obj, tz_offset = create_datetime(year, month, day, hour, minute, ampm, tz_offset)
         if datetime_obj is None:
             app.logger.debug("datetime_obj is None")
             abort(400)
@@ -178,7 +179,7 @@ def create_event():
         while retry:
             try:
                 # create object
-                event = Event(name=name, datetime=datetime_obj, description=description, access=access)
+                event = Event(name=name, datetime=datetime_obj, tz_offset=tz_offset, description=description, access=access)
                 db.db_session.add(event)
                 db.db_session.commit()
                 retry = False
@@ -194,21 +195,19 @@ def create_event():
     else: abort(400)
 
 
-def create_datetime(year, month, day, hour, minute, ampm, timezone):
+def create_datetime(year, month, day, hour, minute, ampm, tz_offset):
     """
-    Create a datetime object with timezone given the input
-    parameters.
+    Create a datetime object given the input parameters.
     :return: None if any parameters are missing or invalid
-    :return: datetime object if successful
+    :return: (datetime_object, tz_info) if successful
     """
     app.logger.debug("year: %s month: %s day: %s " \
-        "hour: %s minute: %s ampm: %s timezone: %s" \
-        % (year, month, day, hour, minute, ampm, timezone))
-
+        "hour: %s minute: %s ampm: %s tz_offset: %s" \
+        % (year, month, day, hour, minute, ampm, tz_offset))
     if year is None or month is None or day is None \
         or hour is None or minute is None \
-        or ampm is None or timezone is None:
-        return None
+        or ampm is None or tz_offset is None:
+        return (None, None)
 
     try:
         year = int(year)
@@ -216,35 +215,33 @@ def create_datetime(year, month, day, hour, minute, ampm, timezone):
         day = int(day)
         hour = int(hour)
         minute = int(minute)
-        timezone = int(timezone)
+        tz_offset = int(tz_offset)
     except ValueError as error:
         app.logger.error(error)
-        return None
+        return (None, None)
 
     ampm = ampm.upper()
     if ampm != 'AM' and ampm != 'PM':
         app.logger.debug("ampm was: %s" % ampm)
-        return None
+        return (None, None)
 
     if ampm == 'PM':
         hour = 12 + hour
 
     # -12 <= timezone <= 14
-    if timezone < -12 or timezone > 14:
-        app.logger.debug("timezone was not within -12 to 14 range")
-        return None
+    if tz_offset < -12 or tz_offset > 14:
+        app.logger.debug("timezone offset was not within -12 to 14 range")
+        return (None, None)
 
-    utc_offset = datetime.timedelta(hours=timezone)
-    timezone_obj = datetime.timezone(utc_offset)
-    datetime_obj = datetime.datetime(year, month, day, hour, minute, tzinfo=timezone_obj)
-    return datetime_obj
+    datetime_obj = datetime.datetime(year, month, day, hour, minute)
+    return (datetime_obj, tz_offset)
 
 
-def sendback_datetime(sqlalchemy_timestamp):
+def sendback_datetime(sqlalchemy_timestamp, tz_offset):
     """
     Return a dictionary of the parts of a sqlalchemy timestamp object.
     This includes year, month, day, hour, minute, AM/PM,
-    and timezone.
+    and timezone offset.
     :return: None if any parameters are missing or invalid
     :return: dictionary of timestamp object parts if successful
     """
@@ -258,19 +255,13 @@ def sendback_datetime(sqlalchemy_timestamp):
     else:
         ampm = "PM"
 
-    # hacky way of getting the timezone offset
-    # but I had to make some progress. Basically
-    # get the string representation of the timestamp
-    # and take the last 6 characters
-    utc_offset = str(sqlalchemy_timestamp)[-6:]
-
-    to_ret = {'year': year,
-                'month': month,
-                'day': day,
-                'hour': hour,
-                'minute': minute,
+    to_ret = {'year': str(year),
+                'month': str(month),
+                'day': str(day),
+                'hour': str(hour),
+                'minute': str(minute),
                 'ampm': ampm,
-                'timezone': utc_offset}
+                'timezone': str(tz_offset)}
     return to_ret
 
 
