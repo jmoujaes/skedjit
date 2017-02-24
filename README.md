@@ -31,3 +31,11 @@ At this point, you can visit the create page and create an event at http://127.0
 
 
 Please update this README with instructions if it is lacking.
+
+
+Configuration Notes
+ - lock down postgres
+ - edit postgres timezone to utc  /etc/postgresql/9.5/main/postgresql.conf
+
+
+

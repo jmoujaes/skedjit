@@ -19,6 +19,9 @@ mkdir -p build
 virtualenv -p `which python3` ./build/.env
 
 cd ./build/.env
+set +u
+source ./bin/activate
+set -u
 
 # upgrade pip
 pip install --upgrade pip==${PIP_VERSION} 
