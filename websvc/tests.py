@@ -2,6 +2,7 @@
 
 import app
 import datetime
+import logging
 import mock
 import unittest
 from database import Database, Base
@@ -137,7 +138,6 @@ class TestApp(unittest.TestCase):
         self.assertEqual(create.status_code, 302)
 
         # get the item we just created from the database
-        # so we can get its link
         event_obj = Event.query.filter(
                         Event.name==self.proper_post_data['name'],
                         Event.description==self.proper_post_data['description']).first()
@@ -161,7 +161,6 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
         # get the item we just created from the database
-        # so we can get its link
         event_obj = Event.query.filter(
                         Event.name==self.proper_post_data['name'],
                         Event.description==self.proper_post_data['description']).first()
@@ -188,7 +187,6 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
         # get the item we just created from the database
-        # so we can get its link
         event_obj = Event.query.filter(
                         Event.name==self.proper_post_data['name'],
                         Event.description==self.proper_post_data['description']).first()
@@ -214,7 +212,6 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
         # get the item we just created from the database
-        # so we can get its link
         event_obj = Event.query.filter(
                         Event.name==self.proper_post_data['name'],
                         Event.description==self.proper_post_data['description']).first()
@@ -234,7 +231,6 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(self.proper_post_data['name'], 'utf-8'), response.get_data())
 
         # get the item we just created from the database
-        # so we can get its link
         event_obj = Event.query.filter(
                         Event.name==self.proper_post_data['name'],
                         Event.description==self.proper_post_data['description']).first()
@@ -242,7 +238,6 @@ class TestApp(unittest.TestCase):
         # send a delete request
         response = self.client.delete('/event/%s' % event_obj.link, data={'access':'WRONG ACCESS CODE'}, follow_redirects=True)
         self.assertEqual(response.status_code, 403)
-
 
     def test_objects_are_same_on_post_and_get(self):
         """

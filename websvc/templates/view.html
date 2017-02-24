@@ -1,46 +1,4 @@
 <!DOCTYPE html>
-<script>
-function replaceContentInContainer(target, source) {
-      document.getElementById(target).innerHTML = document.getElementById(source).innerHTML;
-   }
-
-//FOR DATE-TIME
-for(var i=1; i<=12; i++){
-    var select = document.getElementById("month");
-    var option = document.createElement("OPTION");
-    select.options.add(option);
-    option.text = i;
-    option.value = i;
-}//month
-for(var i=1; i<=31; i++){
-    var select = document.getElementById("day");
-    var option = document.createElement("OPTION");
-    select.options.add(option);
-    option.text = i;
-    option.value = i;
-}//day
-for(var i=2000; i<=2030; i++){
-    var select = document.getElementById("year");
-    var option = document.createElement("OPTION");
-    select.options.add(option);
-    option.text = i;
-    option.value = i;
-}//year
-for(var i=1; i<=12; i++){
-    var select = document.getElementById("hours");
-    var option = document.createElement("OPTION");
-    select.options.add(option);
-    option.text = i;
-    option.value = i;
-}//hours
-for(var i=0; i<=60; i++){
-    var select = document.getElementById("hours");
-    var option = document.createElement("OPTION");
-    select.options.add(option);
-    option.text = i;
-    option.value = i;
-}//minutes
-</script>
 
 <!—- The "placeholder" text and the default datetime needs to be replaced with info from the database that is acquired using a unique id (6 char hash). Edit button on page should change the text to a text box. "Edit Event" button will authenticate and push the updates. —->
 
@@ -51,28 +9,29 @@ for(var i=0; i<=60; i++){
 </head>
 <body>
 
-<button onClick="replaceContentInContainer('views', 'edits')">Edit</button>
 
 <div id="views">
+<button onClick="replaceContentInContainer('views', 'edits')">Edit</button>
 <h4>Event Name:</h4> {{data.name}}
-<h4>Date and Time:</h4> Placeholder
+<h4>Date and Time:</h4> {{data.datetime.month}} {{data.datetime.day}} {{data.datetime.year}} {{data.datetime.hour}} {{data.datetime.minute}} {{data.datetime.ampm}} {{data.datetime.timezone}}
 <h4>Description:</h4> {{data.description}}
 </div>
 
 <div id="edits" style="display:none">
-<form method="POST" action="/event_update">
+<button onClick="replaceContentInContainer('edits', 'views')">Cancel</button>
+<form method="PUT" action="/event/{{data.link}}">
   Event Name:<br>
   <input type="text" name="eventname" value="{{data.name}}" required><br>
   Date and Time:<br>
-  <input type="date" name="datetime" value="1970-01-01T00:00:00" required><br>
+  <select id="month" name="month" required></select>
+  <select id="day" name="day" required></select>
+  <select id="year" name="year" required></select>
+  <select id="hour" name="hour" required></select>
+  <select id="minute" name="minute" required></select>
+  <select id="timezone" name="timezone" required></select>
+  <br>
   Description:<br>
   <input type="text" name="description" value="{{data.description}}"><br>
-
-  <select id="month" name="month"></select>
-  <select id="day" name="day"></select>
-  <select id="year" name="year"></select>
-  <select id="hours" name="hours"></select>
-  <select id="minutes" name="minutes"></select>
 
   Access Key:<br>
   <input type="password" name="accesskey" required><br><br>
@@ -81,6 +40,105 @@ for(var i=0; i<=60; i++){
 </div>
 
 <p>If you are the owner of this event and need to change the details, please enter the access key below.</p><br>
+
+
+<script>
+function replaceContentInContainer(target, source) {
+      document.getElementById(target).innerHTML = document.getElementById(source).innerHTML;
+   }
+
+//FOR DATE-TIME
+var select = document.getElementById("month");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Month";
+option.value = null;
+for(var i=1; i<=12; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.month}}) option.selected=true;
+}//month
+
+var select = document.getElementById("day");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Day";
+option.value = null;
+for(var i=1; i<=31; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.day}}) option.selected=true;
+}//day
+
+var select = document.getElementById("year");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Year";
+option.value = null;
+for(var i=2000; i<=2030; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.year}}) option.selected=true;
+}//year
+
+var select = document.getElementById("hour");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Hour";
+option.value = null;
+for(var i=1; i<=12; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.hour}}) option.selected=true;
+}//hour
+
+var select = document.getElementById("minute");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Minute";
+option.value = null;
+for(var i=0; i<=60; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.minute}}) option.selected=true;
+}//minute
+
+var select = document.getElementById("timezone");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "Timezone";
+option.value = null;
+for(var i=-12; i<=14; i++){
+    var option = document.createElement("OPTION");
+    select.options.add(option);
+    option.text = i;
+    option.value = i;
+    //if (i == {{data.datetime.timezone}}) option.selected=true;
+}//timezone
+
+// AM and PM
+var select = document.getElementById("ampm");
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "AM";
+option.value = "AM";
+//if ({{data.datetime.ampm}} == "AM") option.selected=true;
+var option = document.createElement("OPTION");
+select.options.add(option);
+option.text = "PM";
+option.value = "PM";
+//if ({{data.datetime.ampm}} == "PM") option.selected=true;
+</script>
 
 </body>
 </html>
