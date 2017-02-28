@@ -9,28 +9,32 @@ class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True)
     name = Column(String(64))
-    datetime = Column(DateTime())
-    tz_offset = Column(Integer)
+    dtstamp = Column(DateTime())
+    dtstamp_tz = Column(Integer)
+    dtstart = Column(DateTime())
+    dtstart_tz = Column(Integer)
+    dtend = Column(DateTime())
+    dtend_tz = Column(Integer)
     description = Column(String())
     link = Column(String(64), unique=True)
     access = Column(String(256))
+    ics_data = Column(String())
 
-    def __init__(self, name=None, datetime=None, tz_offset=None, description=None, access=None):
-        if name is None:
-            raise ValueError("Event name must be provided.")
-        if datetime is None:
-            raise ValueError("Date and Time must be provided.")
-        if tz_offset is None:
-            raise ValueError("Timezone offset must be provided.")
-        if access is None:
-            pass
+    def __init__(self, name=None, description=None, access=None, dtstart=None, dtstart_tz=None, dtend=None, dtend_tz=None):
+        if (dtstart is None) or (dtstart_tz is None) or (dtend is None) \
+            or (dtend_tz is None):
+            raise ValueError("Start and End dates and times must be provided.")
 
         self.name = name
-        self.datetime = datetime
-        self.tz_offset = tz_offset
         self.description = description
-        self.link = self.create_link()
         self.access = access
+        self.dtstamp = ""
+        self.dtstamp_tz = ""
+        self.dtstart = dtstart
+        self.dtstart_tz = dtstart_tz
+        self.dtend = dtend
+        self.dtend_tz = dtend_tz
+        self.link = self.create_link()
 
 
     def create_link(self):

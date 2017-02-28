@@ -43,7 +43,7 @@ python -m compileall *.py
 #pylint *.py
 
 # run unit tests
-python -m unittest tests.py
+python -m unittest -v tests.py
 
 # success
 : "*** BUILD SUCCESSFUL ***"

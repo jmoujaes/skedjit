@@ -281,6 +281,42 @@ class TestApp(unittest.TestCase):
             self.assertEqual(data['description'], escape(self.proper_post_data['description']))
 
 
+    def test_ics_creation_format(self):
+        """
+        Assert that the create_ics helper function creates
+        a proper icalendar file based on the ical spec.
+        """
+        # initialize event object
+        datetime_obj = datetime.datetime(year=2017, month=1,
+                        day=20, hour=18, minute=30)
+        event_obj = Event(name="My Wonderful Event", 
+                        datetime=datetime_obj, tz_offset=-5, 
+                        description="Groundbreaking!", access="not None")
+
+        # call create_ics function
+        ics_data = event_obj.create_ics()
+        # assert that each line contains data we expect
+        lines = ics_data.split('\n')
+        self.assertEqual(lines[0], 'BEGIN:VCALENDAR')
+        self.assertEqual(lines[1], 'PRODID:-//SKEDJIT LLC//SKEDJ.IT')
+        self.assertEqual(lines[2], 'VERSION:2.0')
+        self.assertEqual(lines[3], 'BEGIN:VEVENT')
+        self.assertEqual(lines[4], 'UID:{0}-{1}@skedj.it'
+                                    .format(event_obj.dtstamp,
+                                            event_obj.link))
+        self.assertEqual(lines[5], 'DTSTAMP:{0}'
+                                    .format(event_obj.dtstamp))
+        self.assertEqual(lines[6], 'DTSTART:{0}'
+                                    .format(event_obj.dtstart))
+        self.assertEqual(lines[7], 'DTEND:{0}'
+                                    .format(event_obj.dtend))
+        self.assertEqual(lines[8], 'SUMMARY:{0}'
+                                    .format(event_obj.name))
+        self.assertEqual(lines[9], 'DESCRIPTION:{0}'
+                                    .format(event_obj.description))
+        self.assertEqual(lines[10], 'END:VEVENT')
+        self.assertEqual(lines[11], 'END:VCALENDAR')
+
 
 # we use this to capture the template objects that are created by the views
 @contextmanager
