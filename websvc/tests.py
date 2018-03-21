@@ -9,6 +9,7 @@ from database import Database, Base
 from models import Event
 from flask import template_rendered, escape
 from contextlib import contextmanager
+from werkzeug.exceptions import InternalServerError
 
 class TestApp(unittest.TestCase):
 
@@ -76,18 +77,13 @@ class TestApp(unittest.TestCase):
             'abcd', 'dcba']
 
         # send create request
-        result = self.client.post('/create', data={
-                                    'name': 'name',
-                                    'description': 'desc',
-                                    'year': '2017',
-                                    'month': '12',
-                                    'day': '12',
-                                    'hour': '10',
-                                    'minute': '00',
-                                    'ampm':'am',
-                                    'timezone': '-5',
-                                    'access': 'access'})
-        # and assert that it sends redirect
+        data = self.proper_post_data
+        result = self.client.post('/create', data=data)
+        self.assertEqual(result.status_code, 302)
+
+        # create a new event, there will be a link collission
+        # but we retry until there isn't
+        result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 302)
 
     def test_create_event_missing_date_info(self):
@@ -126,6 +122,16 @@ class TestApp(unittest.TestCase):
         result = self.client.post('/create', data=data)
         self.assertEqual(result.status_code, 400)
 
+    def test_create_event_no_access(self):
+        """
+        Assert that we return a 400 BAD REQUEST
+        when a user tries to create an event
+        without providing an access code.
+        """
+        data = self.proper_post_data
+        data.pop("access")
+        response = self.client.post("/create", data=data)
+        self.assertEqual(response.status_code, 400)
 
     def test_get_event_returns_event_object(self):
         """
@@ -149,6 +155,16 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(event_obj.name,'utf-8'), response.get_data())
         self.assertIn(bytes(event_obj.description,'utf-8'), response.get_data())
 
+    def test_get_event_not_found(self):
+        """
+        Assert that a GET request to /event/<link>
+        redirects to the 404 page when the
+        object does not exist.
+        """
+        with captured_templates(app.app) as templates:
+            self.client.get("/event/nonexistent")
+            template, _ = templates[0]
+            self.assertEqual(template.name, "not-found.html")
 
     def test_update_event(self):
         """
@@ -176,6 +192,35 @@ class TestApp(unittest.TestCase):
         self.assertIn(bytes(data['name'], 'utf-8'), response.get_data())
         self.assertIn(bytes(data['description'], 'utf-8'), response.get_data())
 
+    def test_update_event_not_found(self):
+        """
+        Assert that we show the 404 page when a
+        user tries to update an event that does
+        not exist.
+        """
+        data = self.proper_post_data
+        with captured_templates(app.app) as templates:
+            self.client.put("/event/nonexistent")
+            template, _ = templates[0]
+            self.assertEqual(template.name, "not-found.html")
+
+    def test_update_event_no_access_code(self):
+        """
+        Assert that we return a 400 BAD REQUEST
+        when a user tries to update an event
+        without providing an access code.
+        """
+        # create an event
+        data = self.proper_post_data
+        self.client.post('/create', data=data, follow_redirects=True)
+        event_obj = Event.query.filter(Event.name==data['name']).first()
+
+        # try to update event without providing access code
+        data.pop("access")
+        response = self.client.put("/event/%s" % event_obj.link,
+                                   data=data)
+        self.assertEqual(response.status_code, 400)
+
     def test_update_event_invalid_access_code(self):
         """
         Assert that we can get return a 403 during update
@@ -200,7 +245,6 @@ class TestApp(unittest.TestCase):
         response = self.client.put('/event/%s' % event_obj.link, data=data, follow_redirects=True)
         self.assertEqual(response.status_code, 403)
 
-
     def test_delete_event(self):
         """
         Assert that an event is removed from the database
@@ -219,6 +263,35 @@ class TestApp(unittest.TestCase):
         # send a delete request
         response = self.client.delete('/event/%s' % event_obj.link, data={'access':self.proper_post_data['access']}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
+
+    def test_delete_nonexistent_event(self):
+        """
+        Assert that we show the 404 page when a
+        user tries to delete an event that does
+        not exist.
+        """
+        data = self.proper_post_data
+        with captured_templates(app.app) as templates:
+            self.client.delete("/event/nonexistent")
+            template, _ = templates[0]
+            self.assertEqual(template.name, "not-found.html")
+
+    def test_delete_event_no_access_code(self):
+        """
+        Assert that we return a 400 BAD REQUEST
+        when a user tries to delete an event
+        without providing an access code.
+        """
+        # create an event
+        data = self.proper_post_data
+        self.client.post('/create', data=data, follow_redirects=True)
+        event_obj = Event.query.filter(Event.name==data['name']).first()
+
+        # try to delete event without providing access code
+        data.pop("access")
+        response = self.client.delete("/event/%s" % event_obj.link,
+                                   data=data)
+        self.assertEqual(response.status_code, 400)
 
     def test_delete_event_invalid_access_code(self):
         """
@@ -280,6 +353,61 @@ class TestApp(unittest.TestCase):
             self.assertEqual(data['name'], escape(self.proper_post_data['name']))
             self.assertEqual(data['description'], escape(self.proper_post_data['description']))
 
+    def test_get_index(self):
+        """
+        Assert that a GET request to /
+        returns the index.html page.
+        """
+        with captured_templates(app.app) as templates:
+            # make a request to /
+            response = self.client.get('/')
+            template, _ = templates[0]
+            self.assertEqual(template.name, "index.html")
+
+    def test_not_found(self):
+        """
+        Assert that a GET request to /nonexistent
+        returns the not-found.html page.
+        """
+        with captured_templates(app.app) as templates:
+            # make a request to /nonexistent
+            response = self.client.get('/nonexistent')
+            template, _ = templates[0]
+            self.assertEqual(template.name, "not-found.html")
+
+    @mock.patch("app.escape")
+    def test_error_page(self, mock_escape):
+        """
+        Assert that a 500 INTERNAL SERVER ERROR
+        shows the error.html page.
+        """
+        mock_escape.side_effect = InternalServerError
+
+        # create an event
+        data = self.proper_post_data
+        self.client.post('/create', data=data)
+
+        # fetch the item we just created from the database
+        event_obj = Event.query.filter(
+                        Event.name==data['name'],
+                        Event.description==data['description']).first()
+
+        # assert the error.html page is shown on InternalServerError
+        with captured_templates(app.app) as templates:
+            self.client.get("/event/%s" % event_obj.link)
+            template, _ = templates[0]
+            self.assertEqual(template.name, "error.html")
+
+    def test_get_create_page(self):
+        """
+        Assert that a GET request to /create
+        returns the create.html page.
+        """
+        with captured_templates(app.app) as templates:
+            # make a request to /create
+            response = self.client.get('/create')
+            template, _ = templates[0]
+            self.assertEqual(template.name, "create.html")
 
 
 # we use this to capture the template objects that are created by the views

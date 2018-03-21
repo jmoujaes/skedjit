@@ -39,7 +39,7 @@ def error(response):
 
 @app.route('/')
 def index():
-    render_template("index.html")
+    return render_template("index.html")
 
 @app.route('/event/<link>', methods=['GET', 'PUT', 'DELETE'])
 def view_event(link):
@@ -49,7 +49,7 @@ def view_event(link):
     if request.method=='GET':
         app.logger.info("Retrieving event %s" % link)
         event = Event.query.filter(Event.link==link).first()
-        if event is None: 
+        if event is None:
             app.logger.debug("event not found")
             abort(404)
 
@@ -69,7 +69,7 @@ def view_event(link):
         app.logger.info("Updating event %s" % link)
         event = Event.query.filter(Event.link==link).first()
         given_access = request.form.get('access')
-        if event is None: 
+        if event is None:
             app.logger.debug("event not found.")
             abort(404)
         if given_access is None:
@@ -166,7 +166,7 @@ def create_event():
         #TODO revisit hashing and get to the bottom of why we must
         # do an encoding/decoding dance to get storage and comparison
         # of the hash to not blow up (see goo.gl/IpOfm4) 
-        if access is None: 
+        if access is None:
             app.logger.debug("access is None")
             abort(400)
 
